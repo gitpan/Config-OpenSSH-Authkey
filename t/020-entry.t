@@ -5,10 +5,17 @@
 use strict;
 use warnings;
 
-use Test::More tests => 86;
+use Test::More tests => 88;
 
 BEGIN { use_ok('Config::OpenSSH::Authkey::Entry') }
 ok( defined $Config::OpenSSH::Authkey::Entry::VERSION, '$VERSION defined' );
+
+my $options_ref = Config::OpenSSH::Authkey::Entry->split_options('b,s="v"');
+is_deeply(
+  $options_ref,
+  [ { name => 'b' }, { name => 's', value => 'v' } ],
+  'test split_options'
+);
 
 can_ok(
   'Config::OpenSSH::Authkey::Entry',
@@ -157,6 +164,8 @@ for my $key_type ( keys %test_keys ) {
     $ak_entry =
       Config::OpenSSH::Authkey::Entry->new( $test_keys{ssh_rsa_key}->{key} );
 
+    is( $ak_entry->options, undef, 'check options() for no output' );
+
     my @response = $ak_entry->get_option('no-pty');
     ok( @response == 0, 'lookup unset option' );
 
@@ -200,7 +209,7 @@ for my $key_type ( keys %test_keys ) {
 
     # Totally clear the options
     $ak_entry->unset_option($_) for qw/no-agent-forwarding no-pty/;
-    is( $ak_entry->options, '', 'check options() for no output' );
+    is( $ak_entry->options, undef, 'check options() for no output again' );
 
     # Duplicate option handling
     $ak_entry->options('from="127.0.0.1",no-pty,from="localhost"');
@@ -215,10 +224,10 @@ for my $key_type ( keys %test_keys ) {
 
     is( $ak_entry->options, 'from="::1",no-pty',
       'check options() for de-duplicated entries' );
-    
-    is( $ak_entry->duplicate_of, 0, 'check default for duplicate_of');
+
+    is( $ak_entry->duplicate_of, 0, 'check default for duplicate_of' );
     $ak_entry->duplicate_of(1);
-    is( $ak_entry->duplicate_of, 1, 'check that duplicate_of accpets value');
+    is( $ak_entry->duplicate_of, 1, 'check that duplicate_of accpets value' );
   };
   if ($@) {
     chomp $@;

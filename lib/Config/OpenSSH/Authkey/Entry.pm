@@ -13,7 +13,7 @@ use warnings;
 
 use Carp qw(croak);
 
-our $VERSION = '0.06';
+our $VERSION = '0.10';
 
 # This limit is set for various things under OpenSSH code. Used here to
 # limit length of authorized_keys lines.
@@ -27,55 +27,24 @@ my $AUTHKEY_OPTION_NAME_RE = qr/(?i)[a-z0-9_-]+/;
 #
 # Data Parsing & Utility Methods - Internal
 
-my $_split_options = sub {
-  my $self    = shift;
-  my $options = shift;
+my $_populate_options = sub {
+  my $self = shift;
 
-  # Inspected OpenSSH auth-options.c,v 1.44 to derive this lexer:
-  #
-  # In OpenSSH, unparsable options result in a call to bad_options and
-  # the entry being rejected. This module is more permissive, in that
-  # any option name is allowed, regardless of whether OpenSSH supports
-  # such an option or whether the option is the correct type (boolean
-  # vs. string value). This makes the module more future proof, at the
-  # cost of allowing garbage through.
-  #
-  # Options are stored using a list of hashrefs, which allows for
-  # duplicate options, and preserves the order of options. Also, an
-  # index is maintained to speed lookups of the data, and to note if
-  # duplicate options exist. This is due to inconsistent handling by
-  # OpenSSH_5.1p1 of command="" vs. from="" vs. environment="" options
-  # when multiple entries are present. Methods are offered to detect and
-  # cleanup such (hopefully rare) duplicate options.
+  return
+    if @{ $self->{_parsed_options} } > 0
+      or !exists $self->{_options}
+      or length $self->{_options} == 0;
 
-OPTION_LEXER: {
-    # String Argument Options - value is a perhaps empty string enclosed
-    # in double quotes. Internal double quotes are allowed, but only if
-    # these are preceded by a backslash.
-    if (
-      $options =~ m/ \G ($AUTHKEY_OPTION_NAME_RE)="( (?: \\"|[^"] )*? )"
-        (?:,|[ \t]+)? /cgx
-      ) {
-      my $option_name = $1;
-      my $option_value = $2 || q{};
-
-      push @{ $self->{_parsed_options} },
-        { name => $option_name, value => $option_value };
-
-      redo OPTION_LEXER;
-    }
-
-    # Boolean options - mere presence enables them in OpenSSH
-    if ( $options =~ m/ \G ($AUTHKEY_OPTION_NAME_RE) (?:,|[ \t]+)? /cgx ) {
-      my $option_name = $1;
-
-      push @{ $self->{_parsed_options} }, { name => $option_name };
-
-      redo OPTION_LEXER;
-    }
+  for my $option_ref ( split_options( $self, $self->{_options} ) ) {
+    push @{ $self->{_parsed_options} },
+      {
+      name => $option_ref->{name},
+      ( exists $option_ref->{value} ? ( value => $option_ref->{value} ) : ()
+      )
+      };
   }
 
-  return scalar @{ $self->{_parsed_options} };
+  return 1;
 };
 
 my $_parsed_options_as_string = sub {
@@ -175,9 +144,9 @@ ENTRY_LEXER: {
 
 sub new {
   my $class = shift;
-  my $data = shift;
+  my $data  = shift;
 
-  my $self = { _dup_of => 0 };
+  my $self = { _dup_of => 0, _parsed_options => [] };
 
   if ( defined $data ) {
     my ( $is_parsed, $err_msg ) = $_parse_entry->( $self, $data );
@@ -188,6 +157,58 @@ sub new {
 
   bless $self, $class;
   return $self;
+}
+
+sub split_options {
+  my $class         = shift;
+  my $option_string = shift;
+  my @options;
+
+  # Inspected OpenSSH auth-options.c,v 1.44 to derive this lexer:
+  #
+  # In OpenSSH, unparsable options result in a call to bad_options and
+  # the entry being rejected. This module is more permissive, in that
+  # any option name is allowed, regardless of whether OpenSSH supports
+  # such an option or whether the option is the correct type (boolean
+  # vs. string value). This makes the module more future proof, at the
+  # cost of allowing garbage through.
+  #
+  # Options are stored using a list of hashrefs, which allows for
+  # duplicate options, and preserves the order of options. Also, an
+  # index is maintained to speed lookups of the data, and to note if
+  # duplicate options exist. This is due to inconsistent handling by
+  # OpenSSH_5.1p1 of command="" vs. from="" vs. environment="" options
+  # when multiple entries are present. Methods are offered to detect and
+  # cleanup such (hopefully rare) duplicate options.
+
+OPTION_LEXER: {
+    # String Argument Options - value is a perhaps empty string enclosed
+    # in double quotes. Internal double quotes are allowed, but only if
+    # these are preceded by a backslash.
+    if (
+      $option_string =~ m/ \G ($AUTHKEY_OPTION_NAME_RE)="( (?: \\"|[^"] )*? )"
+        (?:,|[ \t]+)? /cgx
+      ) {
+      my $option_name = $1;
+      my $option_value = $2 || q{};
+
+      push @options, { name => $option_name, value => $option_value };
+
+      redo OPTION_LEXER;
+    }
+
+    # Boolean options - mere presence enables them in OpenSSH
+    if (
+      $option_string =~ m/ \G ($AUTHKEY_OPTION_NAME_RE) (?:,|[ \t]+)? /cgx ) {
+      my $option_name = $1;
+
+      push @options, { name => $option_name };
+
+      redo OPTION_LEXER;
+    }
+  }
+
+  return wantarray ? @options : \@options;
 }
 
 ######################################################################
@@ -202,7 +223,7 @@ sub parse {
   if ( !$is_parsed ) {
     croak($err_msg);
   }
-  
+
   return $self;
 }
 
@@ -250,18 +271,18 @@ sub options {
   my $new_options = shift;
 
   if ( defined $new_options ) {
-    delete $self->{_parsed_options};
-    $self->{_options} = $new_options;
+    $self->{_parsed_options} = [];
+    $self->{_options}        = $new_options;
   }
 
-  return exists $self->{_parsed_options}
+  return @{ $self->{_parsed_options} } > 0
     ? $_parsed_options_as_string->($self)
     : $self->{_options};
 }
 
 sub unset_options {
   my $self = shift;
-  delete $self->{_parsed_options};
+  $self->{_parsed_options} = [];
   delete $self->{_options};
   return 1;
 }
@@ -273,11 +294,7 @@ sub get_option {
   my $self        = shift;
   my $option_name = shift;
 
-  if ( exists $self->{_options} and length $self->{_options} > 0 ) {
-    if ( !exists $self->{_parsed_options} ) {
-      $_split_options->( $self, $self->{_options} );
-    }
-  }
+  $_populate_options->($self);
 
   my @values =
     map { $_->{value} || $option_name }
@@ -293,14 +310,10 @@ sub set_option {
   my $option_name  = shift || croak('set_option requires an option name');
   my $option_value = shift;
 
-  if ( exists $self->{_options} and length $self->{_options} > 0 ) {
-    if ( !exists $self->{_parsed_options} ) {
-      $_split_options->( $self, $self->{_options} );
-    }
-  }
+  $_populate_options->($self);
 
   my $updated      = 0;
-  my $record_count = scalar @{ $self->{_parsed_options} };
+  my $record_count = @{ $self->{_parsed_options} };
 
   for my $options_ref ( @{ $self->{_parsed_options} } ) {
     if ( $options_ref->{name} eq $option_name ) {
@@ -332,13 +345,9 @@ sub unset_option {
   my $self        = shift;
   my $option_name = shift;
 
-  if ( exists $self->{_options} and length $self->{_options} > 0 ) {
-    if ( !exists $self->{_parsed_options} ) {
-      $_split_options->( $self, $self->{_options} );
-    }
-  }
+  $_populate_options->($self);
 
-  my $record_count = scalar @{ $self->{_parsed_options} };
+  my $record_count = @{ $self->{_parsed_options} };
   @{ $self->{_parsed_options} } =
     grep { $_->{name} ne $option_name } @{ $self->{_parsed_options} };
 
@@ -349,7 +358,7 @@ sub as_string {
   my $self   = shift;
   my $string = q{};
 
-  if ( exists $self->{_parsed_options} ) {
+  if ( @{ $self->{_parsed_options} } > 0 ) {
     $string .= $_parsed_options_as_string->($self) . q{ };
 
   } elsif ( exists $self->{_options} and length $self->{_options} > 0 ) {
@@ -367,10 +376,10 @@ sub as_string {
 
 sub duplicate_of {
   my $self = shift;
-  my $ref = shift;
-  
-  if (defined $ref) {
-    $self->{_dup_of} = $ref;  
+  my $ref  = shift;
+
+  if ( defined $ref ) {
+    $self->{_dup_of} = $ref;
   }
 
   return $self->{_dup_of};
@@ -410,7 +419,7 @@ the term entry to mean a line from an C<authorized_keys> file.
 Errors are thrown via C<die> or C<croak>, notably when parsing an entry
 via the B<new> or B<key> methods.
 
-=head1 METHODS
+=head1 CLASS METHODS
 
 =over 4
 
@@ -418,6 +427,18 @@ via the B<new> or B<key> methods.
 
 Constructor. Optionally accepts an C<authorized_keys> file entry to
 parse.
+
+=item B<split_options> I<option string>
+
+Accepts a string of comma seperated options, and parses these into a
+list of hash references. In scalar context, returns a reference to the
+list. In list context, returns a list.
+
+=back
+
+=head1 INSTANCE METHODS
+
+=over 4
 
 =item B<parse> I<data to parse>
 
@@ -462,6 +483,8 @@ or, if passed a string, sets that string as the new option set.
   
   # set
   $entry->options('from="127.0.0.1",no-agent-forwarding');
+
+Returns C<undef> if no options have been set.
 
 =item B<unset_options>
 
