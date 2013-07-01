@@ -26,4 +26,4 @@ resources:
   homepage: https://github.com/thrig/Config-OpenSSH-Authkey
   license: http://dev.perl.org/licenses/
   repository: https://github.com/thrig/Config-OpenSSH-Authkey
-version: 1.02
+version: 1.03
