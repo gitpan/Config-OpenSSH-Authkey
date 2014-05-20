@@ -1,0 +1,44 @@
+This file contains message digests of all files listed in MANIFEST,
+signed via the Module::Signature module, version 0.73.
+
+To verify the content in this distribution, first make sure you have
+Module::Signature installed, then type:
+
+    % cpansign -v
+
+It will check each file's integrity, as well as the signature's
+validity.  If "==> Signature verified OK! <==" is not displayed,
+the distribution may already have been compromised, and you should
+not run its Makefile.PL or Build.PL.
+
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+SHA1 5af545c218bf29dd2f3c9202e292c2116254d035 Changes
+SHA1 846252ea9428ead5a9f387bcd843958f5759609c LICENSE
+SHA1 736952fc9b9e893f8c8d6a94021ea6d11985d448 MANIFEST
+SHA1 b77dad806242b3eb98c0f93ec320b4e3ae069094 META.json
+SHA1 73a6749e7186e0c195a89ec07aa7730a3c462165 META.yml
+SHA1 79adb72b8ad30de556b88a78cd0a2c8961962030 Makefile.PL
+SHA1 fa9ec31fea24a8cc87b362e2a0068e2580adca66 README
+SHA1 976dc73b4a011ff1b9f6a490233497c12281ac47 eg/authkey-merge
+SHA1 9af4c6fbb25f2f80111ffdeec828e718bfe2fd6c eg/ssh1-authkey-audit
+SHA1 92ed6fe1a525261491cc16b976dc628560d3c312 lib/Config/OpenSSH/Authkey.pm
+SHA1 f7093e5bb5f57355af62cf5b712165a9ac535ed6 lib/Config/OpenSSH/Authkey/Entry.pm
+SHA1 e3d2822d110d46e162555495f7d5134aaaddbcfc lib/Config/OpenSSH/Authkey/Entry/Options.pm
+SHA1 392f66cdd6f9dcf63545863af8c96045e30c0295 t/020-entry.t
+SHA1 ce0f42c4c41dfff408f7c30617befaed430bd73e t/040-authkey.t
+SHA1 b926aee7ef3dc6dbbeb1b1207a1cc82ce15493ea t/042-options.t
+SHA1 09afb982e3e791d91d200919437976ffa70cad5a t/authorized_keys
+SHA1 191b9f21ce475030cfc0be2c28dd47f9a6129072 t/pod.t
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQEcBAEBAgAGBQJTe3MeAAoJEDTEVWqwTuCUDDUH/1JC0uD8/YX6NKqStXqpA4x1
+TGsubm2DwKZk9JlTiNNZdNUFphd8RiSlY6ZTrSrkvM0L4/1AoDii5Vw2o2gTx3R0
+OPG7ONd3lM8XynTl5Y4vWj+72Xyq7Fsw79c+EnISOpXBr5w5StU6bgsoSxAzol6q
+yzYivMZ0gFfhw0IuTnNxkF/ywRTRIAt2G4+w9bOv/qhnXZULr+0o2IiNlMnJm3tX
+F/rYVQPmpX5ZfDbmcqVInd7auXUK2CoR4CyKS8wDjOgFWB8Udy9u7J1siu5xVC0L
+bi7keU2WtlPMmgrLHYPcm2/ta/KXHYjTI/6CWtmkK293mhHsv/49pE3WTlY4Pc4=
+=wm4n
+-----END PGP SIGNATURE-----

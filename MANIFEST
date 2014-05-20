@@ -14,4 +14,5 @@ t/040-authkey.t
 t/042-options.t
 t/authorized_keys
 t/pod.t
+SIGNATURE
 META.json                                Module JSON meta-data (added by MakeMaker)
